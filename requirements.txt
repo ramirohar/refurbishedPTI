@@ -7,3 +7,4 @@ pandas
 pyvisa
 PyYAML
 redpipy
+rppulses @ git+https://github.com/ramirohar/rppulses.git@main
