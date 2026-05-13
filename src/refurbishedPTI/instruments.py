@@ -1003,6 +1003,19 @@ class AxiSpectrometer(abstract.Spectrometer):
 
         return photons
 
+    def integrate_fast(self, buffers: int) -> tuple[int, float]:
+        count = 0
+        trace_duration = self._osc.set_decimation(2)
+        integration_time = trace_duration * buffers
+        for i in range(buffers):
+            self._osc.trigger_now(self._osc.channel1)
+
+            buffer_slices = self._osc.channel1.get_trace_direct()
+            for slice in buffer_slices:
+                count += rppulses.count(slice, configs.RAW_HIGH_PEAK_THRESHOLD)
+
+        return count, integration_time
+
     def _find_arrival_times(self, data) -> npt.NDArray:
         # TODO: calibrate this
         return data.iloc[np.where(np.diff(data.ch1) > configs.PEAK_THRESHOLD)[0]]
