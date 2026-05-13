@@ -834,8 +834,8 @@ class AxiSpectrometer(abstract.Spectrometer):
         self.emission_mono = emission_mono
 
         self._osc = osc
-        self._osc.channel2.enable()
-        self._osc.channel2.set_gain(5)
+        self._osc.channel1.enable()
+        self._osc.channel1.set_gain(5)
         self._osc.configure_trigger()
 
         if home:
@@ -859,8 +859,8 @@ class AxiSpectrometer(abstract.Spectrometer):
                 **configs.EMISSION_MONO_DRIVER
             )
         if osc is None:
-            osc = rpp.AxiOscilloscope(constants.ChannelConfig.CH2_ONLY)
-        return cls(excitation_mono, emission_mono, osc, home=home)
+            osc = rpp.AxiOscilloscope(constants.ChannelConfig.CH1_ONLY)
+            return cls(excitation_mono, emission_mono, osc, home=home)
 
     # TODO: leave this method here or directly call self.emission_mono.goto_wavelength
     def goto_wavelength(self, wavelength):
@@ -986,19 +986,19 @@ class AxiSpectrometer(abstract.Spectrometer):
         trace_duration = self._osc.set_decimation(2)
         reps = int(np.floor(seconds / trace_duration))
         buffer = np.empty(self._osc._amount_datapoints, dtype=np.float32)
-        delay_samples = self._osc.get_timebase_settings()["trigger_delay_ch2_samples"]
+        delay_samples = self._osc.get_timebase_settings()["trigger_delay_ch1_samples"]
 
         for rep in range(reps):
-            self._osc.trigger_now(self._osc.channel2)
+            self._osc.trigger_now(self._osc.channel1)
             data = self._osc.get_voltage_numpy(
-                "ch2", delay_samples=delay_samples, out=buffer
+                "ch1", delay_samples=delay_samples, out=buffer
             )
             photons += np.count_nonzero(self._get_edges(data))
 
         # downshoot now, then correct
         self._osc.set_timebase(seconds / trace_duration - reps)
-        self._osc.trigger_now(self._osc.channel2)
-        data = self._osc.get_voltage_numpy("ch2")
+        self._osc.trigger_now(self._osc.channel1)
+        data = self._osc.get_voltage_numpy("ch1")
         photons += np.count_nonzero(self._get_edges(data))
 
         return photons
