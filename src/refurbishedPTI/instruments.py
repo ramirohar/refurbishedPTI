@@ -26,6 +26,8 @@ from redpipy.rpwrap import constants
 from . import abstract, configs
 from . import user_interface as ui
 
+import rppulses
+
 
 class ITC4020:
     def __init__(self, config_path, verbose=False):
