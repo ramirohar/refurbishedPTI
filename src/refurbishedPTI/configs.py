@@ -22,6 +22,8 @@ if EMISSION_MONO_DRIVER.get("calibration_path") is None:
     EMISSION_MONO_DRIVER["calibration_path"] = CONFIGS_DIR / "emission_calibration.yaml"
 
 PEAK_THRESHOLD = 0.5
+RAW_LOW_PEAK_THRESHOLD = (PEAK_THRESHOLD * 2 ) / 16384 # Low voltage gain conversion
+RAW_HIGH_PEAK_THRESHOLD = (PEAK_THRESHOLD * 40 ) / 16384 # High voltage gain conversion
 
 # TODO: Check if this is necessary.
 VOLTAGE_THRESHOLD = 1
