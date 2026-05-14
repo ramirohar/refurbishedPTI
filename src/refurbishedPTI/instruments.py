@@ -1009,6 +1009,8 @@ class AxiSpectrometer(abstract.Spectrometer):
         count = 0
         trace_duration = self._osc.set_decimation(2)
         integration_time = trace_duration * buffers
+
+        self._osc.set_trigger_delay(1)
         for i in range(buffers):
             self._osc.trigger_now(self._osc.channel1)
 
