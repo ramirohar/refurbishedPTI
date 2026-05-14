@@ -6,5 +6,5 @@ numpy
 pandas
 pyvisa
 PyYAML
-redpipy
+redpipy @ git+https://github.com/ramirohar/redpipy.git@main
 rppulses @ git+https://github.com/ramirohar/rppulses.git@main
