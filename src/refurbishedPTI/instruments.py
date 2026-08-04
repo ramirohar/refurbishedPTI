@@ -750,22 +750,23 @@ class Spectrometer(abstract.Spectrometer):
         )
         return photons, time_measured
 
-    def integrate(self, seconds) -> int:
+    def integrate(self, seconds) -> tuple[int, float]:
         # TODO: timebase should always be at maximum sampling rate.
         # change this function to integrate for any amount of seconds
         # but keep msr.
-        t_2nd_dec = 0.00026 * 2
-        reps = int(seconds / t_2nd_dec)
+        trace_duration = self._osc.set_decimation(decimation_exponent = 1)
+        self._osc.set_trigger_delay(1)
+        
+        reps = int(seconds / trace_duration)
+        integration_time = trace_duration * reps 
         photons = 0
-        # TODO: should change this to set_decimation
-        self._osc.set_timebase(t_2nd_dec)
+
         buffer = np.empty(self._osc._amount_datapoints, dtype=np.float32)
         for rep in range(reps):
             self._osc.trigger_now()
             data = self._osc.get_voltage_numpy("ch1", out=buffer)
             photons += np.count_nonzero(self._get_edges(data))
-
-        return photons
+        return photons, integration_time
 
     def _find_arrival_times(self, data) -> npt.NDArray:
         # TODO: calibrate this
@@ -1007,10 +1008,10 @@ class AxiSpectrometer(abstract.Spectrometer):
 
     def integrate_fast(self, buffers: int) -> tuple[int, float]:
         count = 0
-        trace_duration = self._osc.set_decimation(2)
+        trace_duration = self._osc.set_decimation(decimation_exponent = 1)
         integration_time = trace_duration * buffers
 
-        self._osc.set_trigger_delay(1)
+        self._osc.set_trigger_delay(self._osc.channel1, 1)
         for i in range(buffers):
             self._osc.trigger_now(self._osc.channel1)
 
