@@ -284,35 +284,36 @@ class ITC4020:
     @property
     def period(self):
         """
-        Queries the pulse period of QCW mode. 
+        Queries the pulse period of QCW mode.
         Return value in seconds.
         """
         return float(self.itc.query("source:pulse:period?"))
-    
+
     @period.setter
     def period(self, value):
         """
-        Sets the pulse period of QCW mode. 
+        Sets the pulse period of QCW mode.
         The 'value' units are seconds.
         """
         self.itc.write(f"source:pulse:period {value}")
-    
+
     @property
     def pulse_width(self):
         """
-        Queries the pulse width of QCW mode. 
+        Queries the pulse width of QCW mode.
         Return value in seconds.
         """
         return float(self.itc.query("source:pulse:width?"))
-    
+
     @pulse_width.setter
     def pulse_width(self, value):
         """
-        Sets the pulse width of QCW mode. 
+        Sets the pulse width of QCW mode.
         The 'value' units are seconds.
         """
         self.itc.write(f"source:pulse:width {value}")
-    
+
+
 class DRV8825(abstract.MotorDriver):
     ttls: dict
     _MODES = (
@@ -754,11 +755,11 @@ class Spectrometer(abstract.Spectrometer):
         # TODO: timebase should always be at maximum sampling rate.
         # change this function to integrate for any amount of seconds
         # but keep msr.
-        trace_duration = self._osc.set_decimation(decimation_exponent = 1)
+        trace_duration = self._osc.set_decimation(decimation_exponent=1)
         self._osc.set_trigger_delay(1)
-        
+
         reps = int(seconds / trace_duration)
-        integration_time = trace_duration * reps 
+        integration_time = trace_duration * reps
         photons = 0
 
         buffer = np.empty(self._osc._amount_datapoints, dtype=np.float32)
@@ -937,6 +938,17 @@ class AxiSpectrometer(abstract.Spectrometer):
                 feed(el)
         return pd.DataFrame(data)
 
+    def get_spectrum_fast(
+        self, buffers: int, starting_wavelength: float, ending_wavelength: float
+    ):
+        spectrum_iterator = self._yield_spectrum_fast(
+            buffers, starting_wavelength, ending_wavelength, wavelength_step=1
+        )
+        data = []
+        for el in spectrum_iterator:
+            data.append(el)
+        return pd.DataFrame(data)
+
     def _yield_spectrum(
         self,
         integration_time: float,
@@ -965,6 +977,24 @@ class AxiSpectrometer(abstract.Spectrometer):
             photons, time_measured = self.get_intensity(
                 integration_time, rounds, feed_data=feed_data
             )
+            yield dict(wavelength=wl, counts=photons, integration_time=time_measured)
+
+    def _yield_spectrum_fast(
+        self,
+        buffers: int,
+        starting_wavelength: float,
+        ending_wavelength: float,
+        wavelength_step: float,
+    ) -> Generator[dict, None, None]:
+        monochromator = self.emission_mono
+        for i,wl in enumerate(
+            monochromator.swipe_wavelengths(
+                starting_wavelength=starting_wavelength,
+                ending_wavelength=ending_wavelength,
+                wavelength_step=wavelength_step,
+            )
+        ):
+            photons, time_measured = self.integrate_fast(buffers)
             yield dict(wavelength=wl, counts=photons, integration_time=time_measured)
 
     def get_intensity(
@@ -1008,7 +1038,7 @@ class AxiSpectrometer(abstract.Spectrometer):
 
     def integrate_fast(self, buffers: int) -> tuple[int, float]:
         count = 0
-        trace_duration = self._osc.set_decimation(decimation_exponent = 1)
+        trace_duration = self._osc.set_decimation(decimation_exponent=1)
         integration_time = trace_duration * buffers
 
         self._osc.set_trigger_delay(self._osc.channel1, 1)
