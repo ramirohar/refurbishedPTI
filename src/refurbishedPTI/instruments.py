@@ -868,7 +868,7 @@ class AxiSpectrometer(abstract.Spectrometer):
 
     # TODO: leave this method here or directly call self.emission_mono.`g`oto_wavelength
     def goto_wavelength(self, wavelength):
-        return self.emission_mono.goto_wavelength(wavelength)
+        self.emission_mono.goto_wavelength(wavelength)
 
     def goto_excitation_wavelength(self, wavelength):
         return self.excitation_mono.goto_wavelength(wavelength)
@@ -1106,3 +1106,15 @@ class AxiSpectrometer(abstract.Spectrometer):
                     feed(times)
                 arrival_times = np.hstack((arrival_times, times))
         return pd.DataFrame(dict(arrival_times=arrival_times))
+
+    def acquire_decay_fast(self, buffers=1) -> pd.DataFrame:
+        self.set_decay_configuration()
+        arrival_idx = np.array([])
+        for _ in range(buffers):
+            self._osc.arm_trigger(self._osc.channel1)
+            buffer_slices = self._osc.channel1.get_trace_direct()
+            for slice in buffer_slices:
+                arrival_idx = np.hstack(
+                    (rppulses.find(slice, configs.RAW_HIGH_PEAK_THRESHOLD), arrival_idx)
+                )
+        return pd.DataFrame(dict(arrival_idx=arrival_idx))
