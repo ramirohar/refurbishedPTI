@@ -597,7 +597,7 @@ class Spectrometer(abstract.Spectrometer):
         self,
         excitation_mono: Monochromator,
         emission_mono: Monochromator,
-        osc,  #: rpp.osci.Oscilloscope,
+        osc: rpp.osci.Oscilloscope,
         home: bool = False,
     ):
         self.excitation_mono = excitation_mono
@@ -1120,4 +1120,5 @@ class AxiSpectrometer(abstract.Spectrometer):
                     (arrival_idx, idx + last)
                 )
                 last = idx.size
-        return pd.DataFrame(dict(arrival_idx=arrival_idx))
+        time_vector = self._osc.get_timevector()
+        return pd.DataFrame(dict(arrival_times=time_vector[arrival_idx]))
