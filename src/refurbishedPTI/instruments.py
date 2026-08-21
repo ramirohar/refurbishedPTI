@@ -987,7 +987,7 @@ class AxiSpectrometer(abstract.Spectrometer):
         wavelength_step: float,
     ) -> Generator[dict, None, None]:
         monochromator = self.emission_mono
-        for i,wl in enumerate(
+        for i, wl in enumerate(
             monochromator.swipe_wavelengths(
                 starting_wavelength=starting_wavelength,
                 ending_wavelength=ending_wavelength,
@@ -1088,7 +1088,7 @@ class AxiSpectrometer(abstract.Spectrometer):
         self._osc.channel2.enabled = True
         self._osc.channel2.set_gain(5)
         self._osc.configure_trigger(source="ch2", level=1.0, positive_edge=False)
-        self._osc.set_trigger_delay(1)
+        self._osc.set_trigger_delay(channel=self._osc.channel1, delay=1, units="trace")
         return trace_duration
 
     def acquire_decay(
