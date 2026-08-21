@@ -1080,7 +1080,7 @@ class AxiSpectrometer(abstract.Spectrometer):
             "If they are wrong, set them with spec.lamp.set_wavelength() and spec.monochromator.set_wavelength()"
         )
 
-    def set_decay_configuration(self, decimation=2) -> float:
+    def set_decay_configuration(self, decimation=1) -> float:
         trace_duration = self._osc.set_decimation(decimation)
         # TODO: this has to be changed in the Osci API so that you don't have to specify
         # a time when you ask for full buffer
@@ -1110,11 +1110,14 @@ class AxiSpectrometer(abstract.Spectrometer):
     def acquire_decay_fast(self, buffers=1) -> pd.DataFrame:
         self.set_decay_configuration()
         arrival_idx = np.array([])
+        last = 0
         for _ in range(buffers):
             self._osc.arm_trigger(self._osc.channel1)
             buffer_slices = self._osc.channel1.get_trace_direct()
             for slice in buffer_slices:
+                idx = rppulses.find(slice, configs.RAW_HIGH_PEAK_THRESHOLD)
                 arrival_idx = np.hstack(
-                    (rppulses.find(slice, configs.RAW_HIGH_PEAK_THRESHOLD), arrival_idx)
+                    (arrival_idx, idx + last)
                 )
+                last = idx.size
         return pd.DataFrame(dict(arrival_idx=arrival_idx))
