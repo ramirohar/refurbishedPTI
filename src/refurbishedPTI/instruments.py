@@ -1109,7 +1109,7 @@ class AxiSpectrometer(abstract.Spectrometer):
 
     def acquire_decay_fast(self, buffers=1) -> pd.DataFrame:
         self.set_decay_configuration()
-        arrival_idx = np.array([])
+        arrival_idx = np.array([], dtype=np.int_)
         last = 0
         for _ in range(buffers):
             self._osc.arm_trigger(self._osc.channel1)
