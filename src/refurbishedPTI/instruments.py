@@ -1041,7 +1041,9 @@ class AxiSpectrometer(abstract.Spectrometer):
         trace_duration = self._osc.set_decimation(decimation_exponent=2)
         integration_time = trace_duration * buffers
 
-        self._osc.set_trigger_delay(self._osc.channel1, 2**16, units="samples")
+        self._osc.set_trigger_delay(
+            self._osc.channel1, delay=constants.DMA_BUFFER_SIZE, units="samples"
+        )
         for i in range(buffers):
             self._osc.trigger_now(self._osc.channel1)
 
@@ -1122,7 +1124,6 @@ class AxiSpectrometer(abstract.Spectrometer):
         arrival_idx = np.array([], dtype=np.int_)
         last = 0
         for _ in range(repetitions):
-
             self._osc.arm_trigger(self._osc.channel1)
             buffer_slices = self._osc.channel1.get_trace_direct(size=samples)
 
