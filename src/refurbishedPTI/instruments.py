@@ -1038,10 +1038,10 @@ class AxiSpectrometer(abstract.Spectrometer):
 
     def integrate_fast(self, buffers: int) -> tuple[int, float]:
         count = 0
-        trace_duration = self._osc.set_decimation(decimation_exponent=1)
+        trace_duration = self._osc.set_decimation(decimation_exponent=2)
         integration_time = trace_duration * buffers
 
-        self._osc.set_trigger_delay(self._osc.channel1, 1)
+        self._osc.set_trigger_delay(self._osc.channel1, 2**16, units="samples")
         for i in range(buffers):
             self._osc.trigger_now(self._osc.channel1)
 
@@ -1080,45 +1080,56 @@ class AxiSpectrometer(abstract.Spectrometer):
             "If they are wrong, set them with spec.lamp.set_wavelength() and spec.monochromator.set_wavelength()"
         )
 
-    def set_decay_configuration(self, decimation=1) -> float:
-        trace_duration = self._osc.set_decimation(decimation)
-        # TODO: this has to be changed in the Osci API so that you don't have to specify
-        # a time when you ask for full buffer
-        # trace_duration = self._osc.set_timebase(decimation=decimation)
+    # def set_decay_configuration(self) -> float:
+    #     trace_duration = self._osc.set_decimation(decimation_exponent=2)
+    #     # TODO: this has to be changed in the Osci API so that you don't have to specify
+    #     # a time when you ask for full buffer
+    #     # trace_duration = self._osc.set_timebase(decimation=decimation)
+    #     self._osc.channel2.enabled = True
+    #     self._osc.channel2.set_gain(5)
+    #     self._osc.configure_trigger(source="ch2", level=1.0, positive_edge=False)
+    #     self._osc.set_trigger_delay(channel=self._osc.channel1, delay=1, units="second")
+    #     return trace_duration
+
+    # def acquire_decay(
+    #     self, max_delay=1, step: float = 1, amount_buffers=1, feed=None
+    # ) -> pd.DataFrame:
+    #     self.set_decay_configuration()
+    #     arrival_times = np.array([])
+    #     for buff_offset in np.arange(1, max_delay + 1, step):
+    #         self._osc.set_trigger_delay(buff_offset)
+    #         for buff in range(amount_buffers):
+    #             self._osc.arm_trigger()
+    #             data = self._osc.get_data()
+    #             times = np.array(self._find_arrival_times(data).time)
+    #             if feed:
+    #                 feed(times)
+    #             arrival_times = np.hstack((arrival_times, times))
+    #     return pd.DataFrame(dict(arrival_times=arrival_times))
+
+    def acquire_decay_fast(
+        self, seconds_per_window=1, repetitions: int = 1
+    ) -> pd.DataFrame:
+        self._osc.set_decimation(decimation_exponent=2)
         self._osc.channel2.enabled = True
         self._osc.channel2.set_gain(5)
         self._osc.configure_trigger(source="ch2", level=1.0, positive_edge=False)
-        self._osc.set_trigger_delay(channel=self._osc.channel1, delay=1, units="trace")
-        return trace_duration
 
-    def acquire_decay(
-        self, max_delay=1, step: float = 1, amount_buffers=1, feed=None
-    ) -> pd.DataFrame:
-        self.set_decay_configuration()
-        arrival_times = np.array([])
-        for buff_offset in np.arange(1, max_delay + 1, step):
-            self._osc.set_trigger_delay(buff_offset)
-            for buff in range(amount_buffers):
-                self._osc.arm_trigger()
-                data = self._osc.get_data()
-                times = np.array(self._find_arrival_times(data).time)
-                if feed:
-                    feed(times)
-                arrival_times = np.hstack((arrival_times, times))
-        return pd.DataFrame(dict(arrival_times=arrival_times))
+        samples = self._osc.set_trigger_delay(
+            channel=self._osc.channel1, delay=seconds_per_window, units="second"
+        )
 
-    def acquire_decay_fast(self, buffers=1) -> pd.DataFrame:
-        self.set_decay_configuration()
         arrival_idx = np.array([], dtype=np.int_)
         last = 0
-        for _ in range(buffers):
+        for _ in range(repetitions):
+
             self._osc.arm_trigger(self._osc.channel1)
-            buffer_slices = self._osc.channel1.get_trace_direct()
+            buffer_slices = self._osc.channel1.get_trace_direct(size=samples)
+
             for slice in buffer_slices:
                 idx = rppulses.find(slice, configs.RAW_HIGH_PEAK_THRESHOLD)
-                arrival_idx = np.hstack(
-                    (arrival_idx, idx + last)
-                )
+                arrival_idx = np.hstack((arrival_idx, idx + last))
                 last = idx.size
+
         time_vector = self._osc.get_timevector()
         return pd.DataFrame(dict(arrival_times=time_vector[arrival_idx]))
