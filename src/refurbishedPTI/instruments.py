@@ -741,21 +741,22 @@ class Spectrometer(abstract.Spectrometer):
         # TODO: see if this loop can be moved to a lower level stage
         # so that it takes less time to complete.
         for _ in range(rounds):
-            photons += self.integrate(seconds)
+            new_photons,integration_time = self.integrate(seconds)
+            photons += new_photons
         # TODO: check if amount_datapoints works with new API. Res: works with _ at beginning
         # TODO: change osci API or find another solution to amount_datapoints
-        time_measured = (
-            rounds
-            * self._osc._amount_datapoints
-            / self._osc.get_timebase_settings()["sampling_rate"]
-        )
-        return photons, time_measured
+        # time_measured = (
+        #     rounds
+        #     * self._osc._amount_datapoints
+        #     / self._osc.get_timebase_settings()["sampling_rate"]
+        # )
+        return photons, integration_time * rounds
 
     def integrate(self, seconds) -> tuple[int, float]:
         # TODO: timebase should always be at maximum sampling rate.
         # change this function to integrate for any amount of seconds
         # but keep msr.
-        trace_duration = self._osc.set_decimation(decimation_exponent=1)
+        trace_duration = self._osc.set_decimation(decimation_exponent=2)
         self._osc.set_trigger_delay(1)
 
         reps = int(seconds / trace_duration)
