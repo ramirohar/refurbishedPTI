@@ -741,7 +741,7 @@ class Spectrometer(abstract.Spectrometer):
         # TODO: see if this loop can be moved to a lower level stage
         # so that it takes less time to complete.
         for _ in range(rounds):
-            new_photons,integration_time = self.integrate(seconds)
+            new_photons, integration_time = self.integrate(seconds)
             photons += new_photons
         # TODO: check if amount_datapoints works with new API. Res: works with _ at beginning
         # TODO: change osci API or find another solution to amount_datapoints
@@ -1121,17 +1121,17 @@ class AxiSpectrometer(abstract.Spectrometer):
         samples = self._osc.set_trigger_delay(
             channel=self._osc.channel1, delay=seconds_per_window, units="second"
         )
-
-        arrival_idx = np.array([], dtype=np.int_)
-        last = 0
+        chunks = []
         for _ in range(repetitions):
+            last = 0
             self._osc.arm_trigger(self._osc.channel1)
             buffer_slices = self._osc.channel1.get_trace_direct(size=samples)
 
             for slice in buffer_slices:
                 idx = rppulses.find(slice, configs.RAW_HIGH_PEAK_THRESHOLD)
-                arrival_idx = np.hstack((arrival_idx, idx + last))
-                last = idx.size
+                chunks.append(idx + last)
+                last = slice.size
 
-        time_vector = self._osc.get_timevector()
-        return pd.DataFrame(dict(arrival_times=time_vector[arrival_idx]))
+        arrival_idx = np.concatenate(chunks)
+        rate = self._osc.get_timebase_settings()["sampling_rate"]
+        return pd.DataFrame(dict(arrival_times=arrival_idx / rate))
