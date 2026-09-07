@@ -1135,3 +1135,34 @@ class AxiSpectrometer(abstract.Spectrometer):
         arrival_idx = np.concatenate(chunks)
         rate = self._osc.get_timebase_settings()["sampling_rate"]
         return pd.DataFrame(dict(arrival_times=arrival_idx / rate))
+
+    def binned_acquire_decay_fast(
+        self, seconds_per_window: float, bin_width: float, repetitions: int = 1
+    ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.int64]]:
+        self._osc.set_decimation(decimation_exponent=2)
+        self._osc.channel2.enabled = True
+        self._osc.channel2.set_gain(5)
+        self._osc.configure_trigger(source="ch2", level=1.0, positive_edge=False)
+
+        samples = self._osc.set_trigger_delay(
+            channel=self._osc.channel1, delay=seconds_per_window, units="second"
+        )
+
+        rate = self._osc.get_timebase_settings()["sampling_rate"]
+        samples_per_bin = max(int(round(bin_width * rate)), 1)
+        bins = samples // samples_per_bin
+
+        hist = np.zeros(bins, dtype=np.int64)
+        for _ in range(repetitions):
+            last = 0
+            self._osc.arm_trigger(self._osc.channel1)
+            buffer_slices = self._osc.channel1.get_trace_direct(size=samples)
+
+            for slice in buffer_slices:
+                idx = rppulses.find(slice, configs.RAW_HIGH_PEAK_THRESHOLD) + last
+                bin_idx = idx // samples_per_bin
+                hist += np.bincount(bin_idx[bin_idx < bins], minlength=bins)
+                last += slice.size
+
+        times = np.arange(bins) * samples_per_bin / rate
+        return times, hist
